@@ -1,0 +1,13 @@
+
+Python Backend Developer with professional experience since 2018 building scalable APIs, web application, automation systems, and large-scale web scraping pipelines. Experienced in developing production systems, leading small teams, and deploying cloud-based applications.
+
+
+Specialized In
+---------------
+☛ Python
+☛ Django
+☛ FastAPI
+☛ PostgreSQL
+☛ Docker
+☛ AWS
+☛ Data Extraction using Scrapy, Playwright, and Selenium. 
