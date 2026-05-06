@@ -21,8 +21,9 @@ from typing import Dict
 
 import sendgrid
 from dotenv import load_dotenv
-from agents import Agent, Runner, trace, function_tool
+from agents import Agent, Runner, trace, function_tool, input_guardrail, GuardrailFunctionOutput
 from sendgrid.helpers.mail import Mail, Email, To, Content
+from pydantic import BaseModel
 
 import ssl
 import certifi
@@ -146,7 +147,27 @@ def create_emailer_agent() -> Agent:
         model=MODEL,
         handoff_description="Format an email as HTML and send it via SendGrid",
     )
+    
+    
+# ---------------------------------------------------------------------------
+# Guardrail Agent
+# ---------------------------------------------------------------------------
+class NameCheckOutput(BaseModel):
+    is_name_in_message: bool
+    name: str
 
+guardrail_agent = Agent( 
+    name="Name check",
+    instructions="Check if the user is including someone's personal name in what they want you to do.",
+    output_type=NameCheckOutput,
+    model="gpt-4o-mini"
+)
+
+@input_guardrail
+async def guardrail_against_name(ctx, agent, message):
+    result = await Runner.run(guardrail_agent, message, context=ctx.context)
+    is_name_in_message = result.final_output.is_name_in_message
+    return GuardrailFunctionOutput(output_info={"found_name": result.final_output},tripwire_triggered=is_name_in_message)
 
 # ---------------------------------------------------------------------------
 # Sales Manager Agent (Orchestrator)
@@ -190,6 +211,7 @@ Rules:
         tools=draft_tools,
         handoffs=[emailer_agent],
         model=MODEL,
+        input_guardrails=[guardrail_against_name],
     )
 
 
@@ -211,5 +233,11 @@ async def run_sdr(message: str) -> None:
 
 
 if __name__ == "__main__":
-    message = "Send out a cold sales email addressed to Dear CEO from Alice"
+    # Protected Automated Sales Development Representative (SDR) Agent System
+    # message = "Send out a cold sales email addressed to Dear CEO from Alice"
+    
+    # This will trigger the guardrail since it includes a personal name ("Alice") in the message, which is not allowed. 
+    # The guardrail will prevent the agent from executing the task and will output a warning instead.
+    message = "Send out a cold sales email addressed to Dear CEO from Head of Business Development"
+
     asyncio.run(run_sdr(message))
